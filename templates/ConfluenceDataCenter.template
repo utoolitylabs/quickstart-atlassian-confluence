@@ -79,8 +79,8 @@ Metadata:
         default: Route 53 Hosted Zone (optional)
       SubDomainName:
         default: Sub-domain for Hosted Zone (optional)
-      SSLCertificateName:
-        default: SSL Certificate Name
+      SSLCertificateARN:
+        default: SSL Certificate ARN
       ExternalSubnets:
         default: External subnets *
       InternalSubnets:
@@ -322,11 +322,11 @@ Parameters:
     Description: Leave this field blank to use your stack name as the sub-domain.
     Default: ""
     Type: String
-  SSLCertificateName:
-    Description: The name of your Server Certificate to use for HTTPS.  Leave blank if you don't want to set up HTTPS at this time
+  SSLCertificateARN:
+    Description: The ARN of your Server Certificate to use for HTTPS.  Leave blank if you don't want to set up HTTPS at this time
     Default: ""
     MinLength: 0
-    MaxLength: 50
+    MaxLength: 128
     Type: String
   StartCollectd:
     AllowedValues:
@@ -380,7 +380,7 @@ Conditions:
   UseSubDomainName:
     !Not [!Equals [!Ref SubDomainName, ""]]
   DoSSL:
-    !Not [!Equals [!Ref SSLCertificateName, ""]]
+    !Not [!Equals [!Ref SSLCertificateARN, ""]]
   GovCloudCondition:
     !Equals [!Ref "AWS::Region", us-gov-west-1]
   UseClusterNodeSpotInstances: !Equals [!Ref UseSpotInstances, true]
@@ -1061,13 +1061,7 @@ Resources:
     Properties:
       Certificates:
         - CertificateArn:
-            !If
-              - DoSSL
-              - !Sub
-                - "arn:aws:iam::${AccountId}:server-certificate/${SSLCertificateName}"
-                - AccountId: !Ref "AWS::AccountId"
-                  SSLCertificateName: !Ref SSLCertificateName
-              - !Ref "AWS::NoValue"
+            !If [DoSSL, !Ref SSLCertificateARN, !Ref "AWS::NoValue"]
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref MainTargetGroup

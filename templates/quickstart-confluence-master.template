@@ -16,7 +16,7 @@ Metadata:
       - PublicSubnet2CIDR
       - AccessCIDR
       - AssociatePublicIpAddress
-      - SSLCertificateName
+      - SSLCertificateARN
     - Label:
         default: Linux Bastion Configuration
       Parameters:
@@ -131,8 +131,8 @@ Metadata:
         default: Route 53 Hosted Zone (optional)
       SubDomainName:
         default: Sub-domain for Hosted Zone (optional)
-      SSLCertificateName:
-        default: SSL Certificate Name
+      SSLCertificateARN:
+        default: SSL Certificate ARN
       StackStandbyMode:
         default: Stack standby mode
       UseSpotInstances:
@@ -422,12 +422,12 @@ Parameters:
     Description: Leave this field blank to use your stack name as the sub-domain.
     Default: ""
     Type: String
-  SSLCertificateName:
-    Description: The name of your Server Certificate to use for HTTPS.  Leave blank
+  SSLCertificateARN:
+    Description: The ARN of your Server Certificate to use for HTTPS.  Leave blank
       if you don't want to set up HTTPS at this time
     Default: ''
     MinLength: 0
-    MaxLength: 50
+    MaxLength: 128
     Type: String
   BastionInstanceType:
     Description: Amazon EC2 instance type for the bastion instances
@@ -497,7 +497,7 @@ Conditions:
   DoSSL:
     !Not
     - !Equals
-      - !Ref SSLCertificateName
+      - !Ref SSLCertificateARN
       - ''
   GovCloudCondition:
     !Equals
@@ -624,7 +624,7 @@ Resources:
         DBSnapshotId: !Ref DBSnapshotId
         HostedZone: !Ref HostedZone
         SubDomainName: !Ref SubDomainName
-        SSLCertificateName: !Ref SSLCertificateName
+        SSLCertificateARN: !Ref SSLCertificateARN
         KeyName: !Ref KeyName
         SynchronyClusterNodeMin: !Ref SynchronyClusterNodeMin
         SynchronyClusterNodeMax: !Ref SynchronyClusterNodeMax
