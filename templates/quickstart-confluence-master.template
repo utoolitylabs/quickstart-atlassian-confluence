@@ -56,6 +56,9 @@ Metadata:
         default: Amazon EC2 Configuration
       Parameters:
       - KeyName
+      - Label:
+          default: Development Configuration
+        Parameters: [UseSpotInstances]
     - Label:
         default: AWS Quick Start Configuration
       Parameters:
@@ -130,6 +133,8 @@ Metadata:
         default: Sub-domain for Hosted Zone (optional)
       SSLCertificateName:
         default: SSL Certificate Name
+      UseSpotInstances:
+        default: Use Spot Instances
 Parameters:
   AvailabilityZones:
     Description: 'List of Availability Zones to use for the subnets in the VPC. Note:
@@ -451,6 +456,14 @@ Parameters:
     Default: Amazon-Linux-HVM
     Description: The Linux distribution for the AMI to be used for the bastion instances
     Type: String
+  UseSpotInstances:
+    AllowedValues:
+      - true
+      - false
+    ConstraintDescription: Must be 'true' or 'false'.
+    Description: Use Amazon EC2 spot instances
+    Default: false
+    Type: String
 Conditions:
   DBProvisionedIops:
     !Equals
@@ -607,6 +620,7 @@ Resources:
         SynchronyClusterNodeMax: !Ref SynchronyClusterNodeMax
         SynchronyNodeInstanceType: !Ref SynchronyNodeInstanceType
         ConfluenceDownloadUrl: !Ref ConfluenceDownloadUrl
+        UseSpotInstances: !Ref UseSpotInstances
   LinuxBastionStack:
     DependsOn: VPCStack
     Type: AWS::CloudFormation::Stack
