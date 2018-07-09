@@ -27,7 +27,7 @@ Metadata:
         Parameters: [CatalinaOpts, StartCollectd, DBSnapshotId, ConfluenceDownloadUrl]
       - Label:
           default: Development (Optional)
-        Parameters: [ClusterNodeMaxSpotPrice, SynchronyClusterNodeMaxSpotPrice, UseSpotInstances]
+        Parameters: [ClusterNodeMaxSpotPrice, SynchronyNodeMaxSpotPrice, StackStandbyMode, UseSpotInstances]
     ParameterLabels:
       AssociatePublicIpAddress:
         default: Assign public IP
@@ -42,7 +42,7 @@ Metadata:
       SynchronyNodeInstanceType:
         default: Synchrony cluster node instance type
       SynchronyNodeMaxSpotPrice:
-        default: Synchrony cluster maximum spot price
+        default: Synchrony cluster node maximum spot price
       CidrBlock:
         default: Permitted IP range
       ClusterNodeMax:
@@ -52,7 +52,7 @@ Metadata:
       ClusterNodeInstanceType:
         default: Confluence cluster node instance type
       ClusterNodeMaxSpotPrice:
-        default: Confluence cluster maximum spot price
+        default: Confluence cluster node maximum spot price
       DBInstanceClass:
         default: Database instance class
       DBMasterUserPassword:
@@ -85,8 +85,10 @@ Metadata:
         default: External subnets *
       InternalSubnets:
         default: Internal subnets *
+      StackStandbyMode:
+        default: Stack standby mode
       UseSpotInstances:
-        default: Use Spot Instances
+        default: Use spot instances
       VPC:
         default: VPC *
 Parameters:
@@ -120,7 +122,7 @@ Parameters:
   SynchronyClusterNodeMin:
     Type: Number
     Default: 0
-  SynchronyClusterNodeMaxSpotPrice:
+  SynchronyNodeMaxSpotPrice:
     Type: Number
     Description: (Legacy) Maximum spot price (rarely relevant anymore after spot pricing model change)
     MinValue: '0.0421'
@@ -342,6 +344,14 @@ Parameters:
     ConstraintDescription: Must be a list of two or more Subnet ID's within the selected VPC.
     Description: Subnets (two or more) where your cluster nodes and other internal infrastructure will be deployed. MUST be within the selected VPC. Specify the ExternalSubnets again here if you wish to deploy the whole stack into the same subnets.
     Type: "List<AWS::EC2::Subnet::Id>"
+  StackStandbyMode:
+    AllowedValues:
+      - cold
+      - active
+    ConstraintDescription: Must be 'cold' or 'active'.
+    Description: Disable/Enable applicable stack resources for cost saving purposes
+    Default: active
+    Type: String
   UseSpotInstances:
     AllowedValues:
       - true
@@ -359,6 +369,8 @@ Conditions:
     !Equals [!Ref DBStorageType, Provisioned IOPS]
   DoCollectd:
     !Equals [!Ref StartCollectd, true]
+  DisableClusterNodes:
+    !Equals [!Ref StackStandbyMode, cold]
   DoRestoreFromRDSSnapshot:
     !Not [!Equals [!Ref DBSnapshotId, ""]]
   DoSetDBMasterUserPassword:
@@ -550,10 +562,10 @@ Resources:
   ClusterNodeGroup:
     Type: "AWS::AutoScaling::AutoScalingGroup"
     Properties:
-      DesiredCapacity: !Ref ClusterNodeMin
+      DesiredCapacity: !If [DisableClusterNodes, 0, !Ref ClusterNodeMin]
       LaunchConfigurationName: !Ref ClusterNodeLaunchConfig
-      MaxSize: !Ref ClusterNodeMax
-      MinSize: !Ref ClusterNodeMin
+      MaxSize: !If [DisableClusterNodes, 0, !Ref ClusterNodeMax]
+      MinSize: !If [DisableClusterNodes, 0, !Ref ClusterNodeMin]
       TargetGroupARNs: [!Ref MainTargetGroup]
       VPCZoneIdentifier: !Ref InternalSubnets
       Tags:
@@ -764,10 +776,10 @@ Resources:
   SynchronyClusterNodeGroup:
     Type: "AWS::AutoScaling::AutoScalingGroup"
     Properties:
-      DesiredCapacity: !Ref SynchronyClusterNodeMin
+      DesiredCapacity: !If [DisableClusterNodes, 0, !Ref SynchronyClusterNodeMin]
       LaunchConfigurationName: !Ref SynchronyClusterNodeLaunchConfig
-      MaxSize: !Ref SynchronyClusterNodeMax
-      MinSize: !Ref SynchronyClusterNodeMin
+      MaxSize: !If [DisableClusterNodes, 0, !Ref SynchronyClusterNodeMax]
+      MinSize: !If [DisableClusterNodes, 0, !Ref SynchronyClusterNodeMin]
       TargetGroupARNs: [!Ref SynchronyTargetGroup]
       VPCZoneIdentifier: !Ref InternalSubnets
       Tags:
@@ -925,7 +937,7 @@ Resources:
               - Arch
       InstanceType: !Ref SynchronyNodeInstanceType
       SecurityGroups: [!Ref SecurityGroup]
-      SpotPrice: !If [UseSynchronyClusterNodeSpotInstances, !Ref SynchronyClusterNodeMaxSpotPrice, !Ref 'AWS::NoValue']
+      SpotPrice: !If [UseSynchronyClusterNodeSpotInstances, !Ref SynchronyNodeMaxSpotPrice, !Ref 'AWS::NoValue']
       UserData:
         Fn::Base64:
           !Join
