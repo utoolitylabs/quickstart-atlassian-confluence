@@ -25,6 +25,9 @@ Metadata:
       - Label:
           default: Advanced (Optional)
         Parameters: [CatalinaOpts, StartCollectd, DBSnapshotId, ConfluenceDownloadUrl]
+      - Label:
+          default: Development (Optional)
+        Parameters: [ClusterNodeMaxSpotPrice, SynchronyClusterNodeMaxSpotPrice, UseSpotInstances]
     ParameterLabels:
       AssociatePublicIpAddress:
         default: Assign public IP
@@ -38,6 +41,8 @@ Metadata:
         default: Minimum number of Synchrony cluster nodes
       SynchronyNodeInstanceType:
         default: Synchrony cluster node instance type
+      SynchronyNodeMaxSpotPrice:
+        default: Synchrony cluster maximum spot price
       CidrBlock:
         default: Permitted IP range
       ClusterNodeMax:
@@ -46,6 +51,8 @@ Metadata:
         default: Minimum number of cluster nodes
       ClusterNodeInstanceType:
         default: Confluence cluster node instance type
+      ClusterNodeMaxSpotPrice:
+        default: Confluence cluster maximum spot price
       DBInstanceClass:
         default: Database instance class
       DBMasterUserPassword:
@@ -78,6 +85,8 @@ Metadata:
         default: External subnets *
       InternalSubnets:
         default: Internal subnets *
+      UseSpotInstances:
+        default: Use Spot Instances
       VPC:
         default: VPC *
 Parameters:
@@ -100,12 +109,22 @@ Parameters:
   ClusterNodeMin:
     Default: 1
     Type: Number
+  ClusterNodeMaxSpotPrice:
+    Type: Number
+    Description: (Legacy) Maximum spot price (rarely relevant anymore after spot pricing model change)
+    MinValue: '0.0421'
+    Default: '1.8421'
   SynchronyClusterNodeMax:
     Default: 1
     Type: Number
   SynchronyClusterNodeMin:
     Type: Number
     Default: 0
+  SynchronyClusterNodeMaxSpotPrice:
+    Type: Number
+    Description: (Legacy) Maximum spot price (rarely relevant anymore after spot pricing model change)
+    MinValue: '0.0421'
+    Default: '1.8421'
   ClusterNodeInstanceType:
     AllowedValues:
       - c5.large
@@ -323,6 +342,14 @@ Parameters:
     ConstraintDescription: Must be a list of two or more Subnet ID's within the selected VPC.
     Description: Subnets (two or more) where your cluster nodes and other internal infrastructure will be deployed. MUST be within the selected VPC. Specify the ExternalSubnets again here if you wish to deploy the whole stack into the same subnets.
     Type: "List<AWS::EC2::Subnet::Id>"
+  UseSpotInstances:
+    AllowedValues:
+      - true
+      - false
+    ConstraintDescription: Must be 'true' or 'false'.
+    Description: Use Amazon EC2 spot instances
+    Default: false
+    Type: String
   VPC:
      ConstraintDescription: Must be the ID of a VPC.
      Description: Virtual Private Cloud
@@ -344,6 +371,8 @@ Conditions:
     !Not [!Equals [!Ref SSLCertificateName, ""]]
   GovCloudCondition:
     !Equals [!Ref "AWS::Region", us-gov-west-1]
+  UseClusterNodeSpotInstances: !Equals [!Ref UseSpotInstances, true]
+  UseSynchronyClusterNodeSpotInstances: !Equals [!Ref UseSpotInstances, true]
 Mappings:
   AWSInstanceType2Arch:
     c4.large:
@@ -675,6 +704,7 @@ Resources:
               - Arch
       InstanceType: !Ref ClusterNodeInstanceType
       SecurityGroups: [!Ref SecurityGroup]
+      SpotPrice: !If [UseClusterNodeSpotInstances, !Ref ClusterNodeMaxSpotPrice, !Ref 'AWS::NoValue']
       UserData:
         Fn::Base64:
           !Join
@@ -895,6 +925,7 @@ Resources:
               - Arch
       InstanceType: !Ref SynchronyNodeInstanceType
       SecurityGroups: [!Ref SecurityGroup]
+      SpotPrice: !If [UseSynchronyClusterNodeSpotInstances, !Ref SynchronyClusterNodeMaxSpotPrice, !Ref 'AWS::NoValue']
       UserData:
         Fn::Base64:
           !Join
