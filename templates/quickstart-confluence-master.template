@@ -16,7 +16,7 @@ Metadata:
       - PublicSubnet2CIDR
       - AccessCIDR
       - AssociatePublicIpAddress
-      - SSLCertificateName
+      - SSLCertificateARN
     - Label:
         default: Linux Bastion Configuration
       Parameters:
@@ -44,7 +44,7 @@ Metadata:
       - DBMultiAZ
     - Label:
         default: DNS (Optional)
-      Parameters: [HostedZone, SubDomainName]
+      Parameters: [CustomDnsName, HostedZone, SubDomainName]
     - Label:
         default: Advanced (Optional)
       Parameters:
@@ -111,6 +111,8 @@ Metadata:
         default: Synchrony cluster node instance type
       ConfluenceDownloadUrl:
         default: Confluence download URL
+      CustomDnsName:
+        default: Existing DNS name
       DBInstanceClass:
         default: RDS instance class
       DBMasterUserPassword:
@@ -128,11 +130,11 @@ Metadata:
       DBSnapshotId:
         default: Database snapshot ID to restore
       HostedZone:
-        default: Route 53 Hosted Zone (optional)
+        default: Route 53 Hosted Zone
       SubDomainName:
-        default: Sub-domain for Hosted Zone (optional)
-      SSLCertificateName:
-        default: SSL Certificate Name
+        default: Sub-domain for Hosted Zone
+      SSLCertificateARN:
+        default: SSL Certificate ARN
       StackStandbyMode:
         default: Stack standby mode
       UseSpotInstances:
@@ -359,6 +361,10 @@ Parameters:
     Default: ''
     ConstraintDescription: Must be a valid Confluence download url from version 6.1.x
       or higher. Find valid versions at https://confluence.atlassian.com/display/DOC/Confluence+Release+Notes
+  CustomDnsName:
+    Description: 'Use custom existing DNS name for your Data Center instance. This will take precedence over HostedZone. Please note: you must own the domain and configure it to point at the load balancer.'
+    Type: String
+    Default: ''
   SynchronyClusterNodeMax:
     Default: 1
     Type: Number
@@ -422,12 +428,12 @@ Parameters:
     Description: Leave this field blank to use your stack name as the sub-domain.
     Default: ""
     Type: String
-  SSLCertificateName:
-    Description: The name of your Server Certificate to use for HTTPS.  Leave blank
+  SSLCertificateARN:
+    Description: The ARN of your Server Certificate to use for HTTPS.  Leave blank
       if you don't want to set up HTTPS at this time
     Default: ''
     MinLength: 0
-    MaxLength: 50
+    MaxLength: 128
     Type: String
   BastionInstanceType:
     Description: Amazon EC2 instance type for the bastion instances
@@ -497,7 +503,7 @@ Conditions:
   DoSSL:
     !Not
     - !Equals
-      - !Ref SSLCertificateName
+      - !Ref SSLCertificateARN
       - ''
   GovCloudCondition:
     !Equals
@@ -613,6 +619,7 @@ Resources:
         ClusterNodeMin: !Ref ClusterNodeMin
         ClusterNodeInstanceType: !Ref ClusterNodeInstanceType
         CatalinaOpts: !Ref CatalinaOpts
+        CustomDnsName: !Ref CustomDnsName
         StartCollectd: !Ref StartCollectd
         DBInstanceClass: !Ref DBInstanceClass
         DBIops: !Ref DBIops
@@ -624,7 +631,7 @@ Resources:
         DBSnapshotId: !Ref DBSnapshotId
         HostedZone: !Ref HostedZone
         SubDomainName: !Ref SubDomainName
-        SSLCertificateName: !Ref SSLCertificateName
+        SSLCertificateARN: !Ref SSLCertificateARN
         KeyName: !Ref KeyName
         SynchronyClusterNodeMin: !Ref SynchronyClusterNodeMin
         SynchronyClusterNodeMax: !Ref SynchronyClusterNodeMax
@@ -670,8 +677,14 @@ Resources:
         NumBastionHosts: 2
 Outputs:
   ConfluenceURL:
-    Description: The URL of the Confluence deployment
+    Description: The URL to access this Confluence service
     Value:
       !GetAtt
       - ConfluenceDCStack
-      - Outputs.URL
+      - Outputs.ConfluenceURL
+  LoadBalancerURL:
+    Description: The Load Balancer URL
+    Value:
+      !GetAtt
+      - ConfluenceDCStack
+      - Outputs.LoadBalancerURL
