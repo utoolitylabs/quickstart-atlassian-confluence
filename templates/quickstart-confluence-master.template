@@ -481,30 +481,6 @@ Parameters:
     Default: false
     Type: String
 Conditions:
-  DBProvisionedIops:
-    !Equals
-    - !Ref DBStorageType
-    - Provisioned IOPS
-  DoCollectd:
-    !Not
-    - !Equals
-      - !Ref StartCollectd
-      - ''
-  DoRestoreFromRDSSnapshot:
-    !Not
-    - !Equals
-      - !Ref DBSnapshotId
-      - ''
-  DoSetDBMasterUserPassword:
-    !Not
-    - !Equals
-      - !Ref DBMasterUserPassword
-      - ''
-  DoSSL:
-    !Not
-    - !Equals
-      - !Ref SSLCertificateARN
-      - ''
   GovCloudCondition:
     !Equals
     - !Ref AWS::Region
