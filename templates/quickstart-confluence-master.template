@@ -58,7 +58,7 @@ Metadata:
       - KeyName
       - Label:
           default: Development Configuration
-        Parameters: [UseSpotInstances]
+        Parameters: [StackStandbyMode, UseSpotInstances]
     - Label:
         default: AWS Quick Start Configuration
       Parameters:
@@ -133,8 +133,10 @@ Metadata:
         default: Sub-domain for Hosted Zone (optional)
       SSLCertificateName:
         default: SSL Certificate Name
+      StackStandbyMode:
+        default: Stack standby mode
       UseSpotInstances:
-        default: Use Spot Instances
+        default: Use spot instances
 Parameters:
   AvailabilityZones:
     Description: 'List of Availability Zones to use for the subnets in the VPC. Note:
@@ -456,6 +458,14 @@ Parameters:
     Default: Amazon-Linux-HVM
     Description: The Linux distribution for the AMI to be used for the bastion instances
     Type: String
+  StackStandbyMode:
+    AllowedValues:
+      - cold
+      - active
+    ConstraintDescription: Must be 'cold' or 'active'.
+    Description: Disable/Enable applicable stack resources for cost saving purposes
+    Default: active
+    Type: String
   UseSpotInstances:
     AllowedValues:
       - true
@@ -620,6 +630,7 @@ Resources:
         SynchronyClusterNodeMax: !Ref SynchronyClusterNodeMax
         SynchronyNodeInstanceType: !Ref SynchronyNodeInstanceType
         ConfluenceDownloadUrl: !Ref ConfluenceDownloadUrl
+        StackStandbyMode: !Ref StackStandbyMode
         UseSpotInstances: !Ref UseSpotInstances
   LinuxBastionStack:
     DependsOn: VPCStack
