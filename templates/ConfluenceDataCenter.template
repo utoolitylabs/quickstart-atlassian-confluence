@@ -18,7 +18,7 @@ Metadata:
         Parameters: [DBInstanceClass, DBMasterUserPassword, DBPassword, DBStorage, DBStorageType, DBIops, DBMultiAZ]
       - Label:
           default: Networking
-        Parameters: [VPC, ExternalSubnets, InternalSubnets, AssociatePublicIpAddress, CidrBlock, BastionSecurityGroupID, KeyName, SSLCertificateARN]
+        Parameters: [VPC, ExternalSubnets, InternalSubnets, AssociatePublicIpAddress, CidrBlock, BastionAccess, KeyName, SSLCertificateARN]
       - Label:
           default: DNS (Optional)
         Parameters: [CustomDnsName, HostedZone, SubDomainName]
@@ -31,8 +31,8 @@ Metadata:
     ParameterLabels:
       AssociatePublicIpAddress:
         default: Assign public IP
-      BastionSecurityGroupID:
-        default: Bastion Security Group ID
+      BastionAccess:
+        default: Bastion Security Group ID or CIDR range
       CatalinaOpts:
         default: Catalina options
       StartCollectd:
@@ -102,12 +102,12 @@ Parameters:
     Default: true
     Description: Controls if the EC2 instances are assigned a public IP address
     Type: String
-  BastionSecurityGroupID:
-    AllowedPattern: "(sg-([0-9a-f]{1,})){0,1}"
-    ConstraintDescription: Must be the ID of an EC2 security group, or empty to skip.
-    Description: (Optional) Bastion Security Group ID.
+  BastionAccess:
+    AllowedPattern: "(sg-([0-9a-f]{1,}))|((\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2}))"
+    ConstraintDescription: Must be the ID of an EC2 security group, or a valid IP CIDR range of the form x.x.x.x/x.
+    Description: Bastion Security Group ID or CIDR range. Use 127.0.0.1/32 to deny access.
     Type: String
-    Default: ''
+    Default: '127.0.0.1/32'
   CidrBlock:
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
@@ -390,9 +390,10 @@ Conditions:
   DoSetDBMasterUserPassword:
     !Not [!Equals [!Ref DBMasterUserPassword, ""]]
   GrantSSHAccessToBastionSecurityGroup:
-    !Not [!Equals [!Ref BastionSecurityGroupID, ""]]
-  GrantSSHAccessToCidrBlock:
-    !Equals [!Ref BastionSecurityGroupID, ""]
+    !Equals [!Select [0, !Split ["-", !Ref BastionAccess]], "sg"]
+  GrantSSHAccessToCidrRange: !And
+    - !Not [!Equals [!Select [0, !Split ["/", !Ref BastionAccess]], "127.0.0.1"]]
+    - !Not [!Condition GrantSSHAccessToBastionSecurityGroup]
   UseCustomDnsName:
     !Not [!Equals [!Ref CustomDnsName, '']]
   UseHostedZone:
@@ -1173,18 +1174,18 @@ Resources:
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - !If
-          - GrantSSHAccessToCidrBlock
+          - GrantSSHAccessToCidrRange
           - IpProtocol: tcp
             FromPort: 22
             ToPort: 22
-            CidrIp: !Ref CidrBlock
+            CidrIp: !Ref BastionAccess
           - !Ref "AWS::NoValue"
         - !If
           - GrantSSHAccessToBastionSecurityGroup
           - IpProtocol: tcp
             FromPort: 22
             ToPort: 22
-            SourceSecurityGroupId: !Ref BastionSecurityGroupID
+            SourceSecurityGroupId: !Ref BastionAccess
           - !Ref "AWS::NoValue"
         - IpProtocol: tcp
           FromPort: 80
