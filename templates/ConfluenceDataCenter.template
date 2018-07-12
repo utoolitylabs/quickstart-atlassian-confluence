@@ -18,7 +18,7 @@ Metadata:
         Parameters: [DBInstanceClass, DBMasterUserPassword, DBPassword, DBStorage, DBStorageType, DBIops, DBMultiAZ]
       - Label:
           default: Networking
-        Parameters: [VPC, ExternalSubnets, InternalSubnets, AssociatePublicIpAddress, CidrBlock, KeyName, SSLCertificateARN]
+        Parameters: [VPC, ExternalSubnets, InternalSubnets, AssociatePublicIpAddress, CidrBlock, BastionSecurityGroupID, KeyName, SSLCertificateARN]
       - Label:
           default: DNS (Optional)
         Parameters: [CustomDnsName, HostedZone, SubDomainName]
@@ -31,6 +31,8 @@ Metadata:
     ParameterLabels:
       AssociatePublicIpAddress:
         default: Assign public IP
+      BastionSecurityGroupID:
+        default: Bastion Security Group ID
       CatalinaOpts:
         default: Catalina options
       StartCollectd:
@@ -100,6 +102,12 @@ Parameters:
     Default: true
     Description: Controls if the EC2 instances are assigned a public IP address
     Type: String
+  BastionSecurityGroupID:
+    AllowedPattern: "(sg-([0-9a-f]{1,})){0,1}"
+    ConstraintDescription: Must be the ID of an EC2 security group, or empty to skip.
+    Description: (Optional) Bastion Security Group ID.
+    Type: String
+    Default: ''
   CidrBlock:
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
@@ -381,6 +389,10 @@ Conditions:
     !Not [!Equals [!Ref DBSnapshotId, ""]]
   DoSetDBMasterUserPassword:
     !Not [!Equals [!Ref DBMasterUserPassword, ""]]
+  GrantSSHAccessToBastionSecurityGroup:
+    !Not [!Equals [!Ref BastionSecurityGroupID, ""]]
+  GrantSSHAccessToCidrBlock:
+    !Equals [!Ref BastionSecurityGroupID, ""]
   UseCustomDnsName:
     !Not [!Equals [!Ref CustomDnsName, '']]
   UseHostedZone:
@@ -1160,10 +1172,20 @@ Resources:
       GroupDescription: Security group allowing SSH and HTTP/HTTPS access
       VpcId: !Ref VPC
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: !Ref CidrBlock
+        - !If
+          - GrantSSHAccessToCidrBlock
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: !Ref CidrBlock
+          - !Ref "AWS::NoValue"
+        - !If
+          - GrantSSHAccessToBastionSecurityGroup
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            SourceSecurityGroupId: !Ref BastionSecurityGroupID
+          - !Ref "AWS::NoValue"
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
