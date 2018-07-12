@@ -26,8 +26,8 @@ Metadata:
           default: Advanced (Optional)
         Parameters: [CatalinaOpts, StartCollectd, DBSnapshotId, ConfluenceDownloadUrl]
       - Label:
-          default: Development (Optional)
-        Parameters: [ClusterNodeMaxSpotPrice, SynchronyNodeMaxSpotPrice, StackStandbyMode, UseSpotInstances]
+          default: Availability/Cost (Optional)
+        Parameters: [StackStandbyMode, UseSpotInstances, ClusterNodeMaxSpotPrice, SynchronyNodeMaxSpotPrice]
     ParameterLabels:
       AssociatePublicIpAddress:
         default: Assign public IP
