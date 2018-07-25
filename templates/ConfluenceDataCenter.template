@@ -1050,6 +1050,7 @@ Resources:
     Properties:
       AllocatedStorage: !Ref DBStorage
       DBInstanceClass: !Ref DBInstanceClass
+      DBInstanceIdentifier: !Ref AWS::StackName
       DBSubnetGroupName: !Ref DBSubnetGroup
       DBSnapshotIdentifier: !If [DoRestoreFromRDSSnapshot, !Ref DBSnapshotId, !Ref "AWS::NoValue"]
       Engine: postgres
