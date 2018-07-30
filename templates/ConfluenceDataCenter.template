@@ -389,11 +389,11 @@ Conditions:
     !Not [!Equals [!Ref DBSnapshotId, ""]]
   DoSetDBMasterUserPassword:
     !Not [!Equals [!Ref DBMasterUserPassword, ""]]
-  GrantSSHAccessToBastionSecurityGroup:
+  GrantSSHAndNFSAccessToBastionSecurityGroup:
     !Equals [!Select [0, !Split ["-", !Ref BastionAccess]], "sg"]
   GrantSSHAccessToCidrRange: !And
     - !Not [!Equals [!Select [0, !Split ["/", !Ref BastionAccess]], "127.0.0.1"]]
-    - !Not [!Condition GrantSSHAccessToBastionSecurityGroup]
+    - !Not [!Condition GrantSSHAndNFSAccessToBastionSecurityGroup]
   UseCustomDnsName:
     !Not [!Equals [!Ref CustomDnsName, '']]
   UseHostedZone:
@@ -1182,10 +1182,17 @@ Resources:
             CidrIp: !Ref BastionAccess
           - !Ref "AWS::NoValue"
         - !If
-          - GrantSSHAccessToBastionSecurityGroup
+          - GrantSSHAndNFSAccessToBastionSecurityGroup
           - IpProtocol: tcp
             FromPort: 22
             ToPort: 22
+            SourceSecurityGroupId: !Ref BastionAccess
+          - !Ref "AWS::NoValue"
+        - !If
+          - GrantSSHAndNFSAccessToBastionSecurityGroup
+          - IpProtocol: tcp
+            FromPort: 2049
+            ToPort: 2049
             SourceSecurityGroupId: !Ref BastionAccess
           - !Ref "AWS::NoValue"
         - IpProtocol: tcp
